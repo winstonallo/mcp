@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 const JSON_RPC_VERSION: &str = "2.0";
 
 #[repr(i16)]
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum ErrorCode {
     ServerError(i16), // -32000 to -32099
     ParseError = -32700,
@@ -15,17 +15,17 @@ pub enum ErrorCode {
     InternalError = -32603,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum NumberOrString {
     Number(i32),
     String(String),
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct Error {
-    code: ErrorCode,
-    message: String,
-    data: Option<serde_json::Value>,
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ErrorData {
+    pub code: ErrorCode,
+    pub message: String,
+    pub data: Option<serde_json::Value>,
 }
 
 pub enum Method {
@@ -53,23 +53,30 @@ pub enum Method {
 }
 
 pub struct Request {
-    jsonrpc: String,
-    id: NumberOrString,
-    method: Method,
-    params: Option<serde_json::Value>,
+    pub jsonrpc: String,
+    pub id: Option<NumberOrString>,
+    pub method: String,
+    pub params: Option<serde_json::Value>,
 }
 
 pub struct Response {
-    jsonrpc: String,
-    id: NumberOrString,
-    result: Option<serde_json::Value>,
-    error: Option<Error>,
+    pub jsonrpc: String,
+    pub id: Option<NumberOrString>,
+    pub result: Option<serde_json::Value>,
+    pub error: Option<ErrorData>,
 }
 
 pub struct Notification {
-    jsonrpc: String,
-    method: Method,
-    params: Option<serde_json::Value>,
+    pub jsonrpc: String,
+    pub method: String,
+    pub params: Option<serde_json::Value>,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct Error {
+    pub jsonrpc: String,
+    pub id: Option<NumberOrString>,
+    pub error: ErrorData,
 }
 
 pub enum Message {
@@ -80,74 +87,66 @@ pub enum Message {
     Null,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct Raw {
-    jsonrpc: String,
+    pub jsonrpc: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    id: Option<NumberOrString>,
+    pub id: Option<NumberOrString>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    method: Option<String>,
+    pub method: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    params: Option<serde_json::Value>,
+    pub params: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    result: Option<serde_json::Value>,
+    pub result: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    error: Option<Error>,
+    pub error: Option<ErrorData>,
 }
 
-impl Response {
-    pub fn new(id: NumberOrString, result: Option<serde_json::Value>, error: Option<Error>) -> Self {
-        assert!(result.is_none() || error.is_none());
+impl TryFrom<Raw> for Message {
+    type Error = String;
 
-        Self {
-            jsonrpc: JSON_RPC_VERSION.to_string(),
-            id,
-            result,
-            error,
+    fn try_from(value: Raw) -> Result<Self, <Self as TryFrom<Raw>>::Error> {
+        if value.error.is_some() {
+            return Ok(Message::Error(Error {
+                jsonrpc: value.jsonrpc,
+                id: value.id,
+                error: value.error.unwrap(),
+            }));
         }
-    }
-}
 
-impl Notification {
-    pub fn new(method: Method, params: Option<serde_json::Value>) -> Self {
-        Self {
-            jsonrpc: JSON_RPC_VERSION.to_string(),
-            method,
-            params,
+        if value.result.is_some() {
+            return Ok(Message::Response(Response {
+                jsonrpc: value.jsonrpc,
+                id: value.id,
+                result: value.result,
+                error: None,
+            }));
         }
-    }
-}
 
-impl Request {
-    pub fn new(method: Method, id: NumberOrString, params: Option<serde_json::Value>) -> Self {
-        Self {
-            jsonrpc: JSON_RPC_VERSION.to_string(),
-            method,
-            id,
-            params,
-        }
-    }
-}
-
-impl Error {
-    pub fn new(code: ErrorCode, message: &str, data: Option<serde_json::Value>) -> Result<Self, String> {
-        match code {
-            ErrorCode::ServerError(code) => {
-                if (-32099..=-32000).contains(&code) {
-                    Ok(Self {
-                        code: ErrorCode::ServerError(code),
-                        message: message.to_string(),
-                        data,
-                    })
-                } else {
-                    Err(format!("ServerError code must be in range -32099..=-32000 (got {code})"))
-                }
+        if let Some(method) = value.method {
+            if value.id.is_none() {
+                return Ok(Message::Notification(Notification {
+                    jsonrpc: value.jsonrpc,
+                    method,
+                    params: value.params,
+                }));
+            } else {
+                return Ok(Message::Request(Request {
+                    jsonrpc: value.jsonrpc,
+                    id: value.id,
+                    method,
+                    params: value.params,
+                }));
             }
-            _ => Ok(Self {
-                code,
-                message: message.to_string(),
-                data,
-            }),
         }
+
+        if value.id.is_none() && value.result.is_none() && value.error.is_none() {
+            return Ok(Message::Null);
+        }
+
+        Err(format!(
+            "invalid JSON-RPC format: id: {:?}, method: {:?}, result: {:?}, error: {:?}",
+            value.id, value.method, value.result, value.error
+        ))
     }
 }
