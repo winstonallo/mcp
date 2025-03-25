@@ -24,7 +24,7 @@ impl Client {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .map_err(|e| format!("Failed to start serevr: {}", e))?;
+            .map_err(|e| format!("Failed to start server: {}", e))?;
 
         self.servers.push(server);
         self.processes.push(Arc::new(Mutex::new(proc)));

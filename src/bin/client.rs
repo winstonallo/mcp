@@ -4,7 +4,7 @@ use mcp::{client::Client, server::Server};
 async fn main() -> Result<(), String> {
     let mut client = Client::new(Vec::new());
 
-    let server = Server::new("/home/winstonallo/mpc/target/debug/server");
+    let server = Server::new("/home/winstonallo/mcp/target/debug/server");
     client.start_server(server).await?;
 
     client.monitor_output(0).await?;
@@ -14,7 +14,7 @@ async fn main() -> Result<(), String> {
     let response = client.read_response(0).await?;
     println!("Got response: {}", response);
 
-    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+    tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
 
     client.stop_server(0).await?;
 
