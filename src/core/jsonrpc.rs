@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 const JSON_RPC_VERSION: &str = "2.0";
 
 #[repr(i16)]
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Serialize)]
 pub enum ErrorCode {
     ServerError(i16), // -32000 to -32099
     ParseError = -32700,
@@ -15,7 +15,26 @@ pub enum ErrorCode {
     InternalError = -32603,
 }
 
+impl<'de> Deserialize<'de> for ErrorCode {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let code = i16::deserialize(deserializer)?;
+        match code {
+            -32700 => Ok(ErrorCode::ParseError),
+            -32600 => Ok(ErrorCode::InvalidRequest),
+            -32601 => Ok(ErrorCode::MethodNotFound),
+            -32602 => Ok(ErrorCode::InvalidParams),
+            -32603 => Ok(ErrorCode::InternalError),
+            -32099..-32000 => Ok(ErrorCode::ServerError(code)),
+            _ => Err(serde::de::Error::custom(format!("unknown error code: {}", code))),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(untagged)]
 pub enum NumberOrString {
     Number(i32),
     String(String),
