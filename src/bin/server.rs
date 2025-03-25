@@ -1,8 +1,6 @@
-use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
+const NOTIFICATION: &str = "{\"jsonrpc\": \"2.0\",\"method\": \"tools/list\", \"params\": {\"foo\": \"bar\"}}";
 
 #[tokio::main]
 async fn main() {
-    loop {
-        println!("hello");
-    }
+    println!("{}", NOTIFICATION);
 }

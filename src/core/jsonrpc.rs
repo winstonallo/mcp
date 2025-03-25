@@ -52,6 +52,7 @@ pub enum Method {
     SamplingCreateMessage, // sampling/createMessage
 }
 
+#[derive(Debug)]
 pub struct Request {
     pub jsonrpc: String,
     pub id: Option<NumberOrString>,
@@ -59,6 +60,7 @@ pub struct Request {
     pub params: Option<serde_json::Value>,
 }
 
+#[derive(Debug)]
 pub struct Response {
     pub jsonrpc: String,
     pub id: Option<NumberOrString>,
@@ -66,19 +68,21 @@ pub struct Response {
     pub error: Option<ErrorData>,
 }
 
+#[derive(Debug)]
 pub struct Notification {
     pub jsonrpc: String,
     pub method: String,
     pub params: Option<serde_json::Value>,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Error {
     pub jsonrpc: String,
     pub id: Option<NumberOrString>,
     pub error: ErrorData,
 }
 
+#[derive(Debug)]
 pub enum Message {
     Request(Request),
     Response(Response),
@@ -88,7 +92,7 @@ pub enum Message {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct Raw {
+pub struct Raw {
     pub jsonrpc: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<NumberOrString>,

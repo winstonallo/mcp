@@ -1,1 +1,1 @@
-mod jsonrpc;
+pub mod jsonrpc;

@@ -1,3 +1,3 @@
 pub mod client;
-mod core;
+pub mod core;
 pub mod server;

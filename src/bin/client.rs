@@ -4,6 +4,8 @@ use tokio::{
     process::{Child, Command},
 };
 
+use mcp::core::jsonrpc::{self, Message};
+
 struct ServerProcess {
     id: String,
     process: Child,
@@ -28,7 +30,11 @@ async fn spawn_server(id: String, path: &Path) -> Result<ServerProcess, Box<dyn 
                 match reader.read_line(&mut line).await {
                     Ok(0) => break,
                     Ok(_) => {
-                        println!("[{}:stdout]: {}", id, line);
+                        println!("[{}:stdout]: {:?}", id, line);
+
+                        let raw: jsonrpc::Raw = serde_json::from_str(&line).expect("could not deserialize");
+                        let notification = Message::try_from(raw).expect("invalid jsonrpc");
+                        println!("[{}:stdout]: {:?}", id, notification);
                     }
                     Err(e) => {
                         eprintln!("[{}:error]: {}", id, e);
