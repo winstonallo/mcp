@@ -1,6 +1,8 @@
-use std::{thread::sleep, time::Duration};
+use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
 
-fn main() {
-    sleep(Duration::from_secs(1));
-    println!("Hello from server!");
+#[tokio::main]
+async fn main() {
+    loop {
+        println!("hello");
+    }
 }
