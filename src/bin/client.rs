@@ -1,10 +1,13 @@
 use std::{error::Error, path::Path};
 use tokio::{
-    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
+    io::{AsyncBufReadExt, AsyncWriteExt, BufReader, BufWriter},
     process::{Child, Command},
 };
 
-use mcp::core::jsonrpc::{self, Message};
+use mcp::core::{
+    jsonrpc::{self, Message, NumberOrString, Request},
+    methods::InitializeRequest,
+};
 
 struct ServerProcess {
     id: String,
@@ -18,12 +21,21 @@ async fn spawn_server(id: String, path: &Path) -> Result<ServerProcess, Box<dyn 
         .spawn()?;
 
     let stdout = process.stdout.take().expect("could not take stdout");
+    let stdin = process.stdin.take().expect("could not take stdin");
+
+    let request = InitializeRequest::new("2024-11-05", "arthur", "1.0", None);
 
     tokio::spawn({
         let id = id.clone();
         async move {
             let mut reader = BufReader::new(stdout);
+            let mut writer = BufWriter::new(stdin);
             let mut line = String::new();
+
+            let req_str = format!("{}\n", serde_json::to_string(&request).expect("could not serialize"));
+            println!("{}", req_str);
+            let _ = writer.write_all(req_str.as_bytes()).await;
+            let _ = writer.flush().await;
 
             loop {
                 line.clear();
@@ -57,9 +69,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let server = spawn_server(format!("{}", idx + 1), &path).await?;
         servers.push(server);
     }
-
-    servers[0].process.stdin.as_mut().unwrap().write_all("hello\n".as_bytes()).await?;
-    servers[0].process.stdin.as_mut().unwrap().flush().await?;
 
     tokio::signal::ctrl_c().await?;
 

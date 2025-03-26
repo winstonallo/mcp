@@ -1,12 +1,13 @@
-const NOTIFICATION: &str = "{\"jsonrpc\": \"2.0\",\"method\": \"tools/list\", \"params\": {\"foo\": \"bar\"}}";
-const REQUEST: &str = "{\"jsonrpc\": \"2.0\", \"id\": \"69\", \"method\": \"tools/list\", \"params\": {\"foo\": \"bar\"}}";
-const RESPONSE: &str = "{\"jsonrpc\": \"2.0\", \"id\": \"69\", \"result\": {\"foo\": \"bar\"}}";
-const ERROR: &str = "{\"jsonrpc\": \"2.0\", \"id\": \"69\", \"error\": {\"code\": -32600, \"message\": \"oops\"}}";
+use std::error::Error;
+
+use mcp::server::Server;
 
 #[tokio::main]
-async fn main() {
-    println!("{}", REQUEST);
-    println!("{}", RESPONSE);
-    println!("{}", NOTIFICATION);
-    println!("{}", ERROR);
+async fn main() -> Result<(), Box<dyn Error>> {
+    let mut server = Server::new().await?;
+    if let Err(e) = server.run().await {
+        eprintln!("error running server: {}", e)
+    }
+
+    Ok(())
 }
